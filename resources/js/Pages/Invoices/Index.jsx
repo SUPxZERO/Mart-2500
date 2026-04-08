@@ -33,6 +33,16 @@ export default function InvoicesIndex({ invoices, filters }) {
     const getPaymentLabel = (invoice) =>
         (invoice.payment_provider || invoice.payment_method || '').replace('_', ' ');
 
+    const getPeriodLabel = (period, from, to) => {
+        switch (period) {
+            case 'week': return 'This Week';
+            case 'month': return 'This Month';
+            case 'year': return 'This Year';
+            case 'range': return from && to ? `(${from} → ${to})` : 'Range';
+            default: return 'All';
+        }
+    };
+
     const getStatusBadge = (status, paymentLabel) => {
         if (status === 'Completed') {
             return (
@@ -157,10 +167,10 @@ export default function InvoicesIndex({ invoices, filters }) {
                         <a
                             href={exportHref}
                             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-bold text-white shadow-md transition-all hover:bg-indigo-700 active:scale-95 sm:w-auto"
-                            title="Export filtered invoices to Excel"
+                            title={`Export ${getPeriodLabel(period, from, to)} invoices to Excel`}
                         >
                             <Download className="h-5 w-5" />
-                            Export to Excel
+                            Export {getPeriodLabel(period, from, to)}
                         </a>
                     </div>
                 </div>

@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\InvoiceItem;
+use App\Models\Invoice;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -19,11 +19,9 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
 
     public function query()
     {
-        $query = InvoiceItem::query()->with([
-            'invoice.customer'
-        ])->whereHas('invoice', function ($invoiceQuery) {
-            $this->applyDateFilters($invoiceQuery);
-        })->latest('id');
+        $query = Invoice::query()->with('customer')
+            ->when(true, fn ($q) => $this->applyDateFilters($q))
+            ->latest('created_at');
 
         return $query;
     }
@@ -37,18 +35,12 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             'Payment Method',
             'Payment Provider',
             'Status',
-            'Item Name',
-            'Quantity',
-            'Unit Price (KHR)',
-            'Line Total (KHR)',
             'Invoice Total (KHR)',
         ];
     }
 
-    public function map($item): array
+    public function map($invoice): array
     {
-        $invoice = $item->invoice;
-        
         return [
             $invoice->invoice_number,
             $invoice->created_at->format('Y-m-d H:i:s'),
@@ -56,10 +48,6 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             $invoice->payment_method,
             $invoice->payment_provider,
             $invoice->status,
-            $item->item_name,
-            $item->qty,
-            $item->custom_price_sold_at,
-            $item->custom_price_sold_at * $item->qty,
             $invoice->total_khr,
         ];
     }
@@ -98,6 +86,11 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
 
             if ($from->lte($to)) {
                 $query->whereBetween('created_at', [$from, $to]);
+            }
+        }
+    }
+}
+
             }
         }
     }

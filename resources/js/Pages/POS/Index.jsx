@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Head } from '@inertiajs/react';
 import POSLayout from '@/Layouts/POSLayout';
 import ItemCard from '@/Components/POS/ItemCard';
@@ -10,7 +10,12 @@ import { useCartStore } from '@/store/useCartStore';
 export default function POSIndex({ items, customers, exchange_rate, payment_gateways }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
-    const { addItem, cart } = useCartStore();
+    // Use selective subscriptions instead of destructuring all at once
+    const addItem = useCartStore((state) => state.addItem);
+    const cart = useCartStore((state) => state.cart);
+
+    // Barcode scanner state
+    const [barcode, setBarcode] = useState('');
 
     // Build unique category list
     const categories = useMemo(() => {
@@ -34,6 +39,87 @@ export default function POSIndex({ items, customers, exchange_rate, payment_gate
             return matchesCategory && matchesSearch;
         });
     }, [items, activeCategory, searchQuery]);
+
+    // Barcode scanner handler - Fixed version
+    useEffect(() => {
+        // Create a stable reference for the barcode accumulator
+        let accumulatedBarcode = '';
+        let barcodeTimeout = null;
+
+        const handleKeyPress = (event) => {
+            // Don't capture if typing in an input field
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // Barcode scanners typically send keys rapidly and end with Enter
+            if (event.key === 'Enter') {
+                if (accumulatedBarcode.trim().length > 0) {
+                    console.log('🔍 Scanning barcode:', accumulatedBarcode);
+                    
+                    // Try to find item by barcode (exact match first, then by name)
+                    const foundItem = items.find((item) => {
+                        // Match by barcode if it exists
+                        if (item.barcode && item.barcode.toString() === accumulatedBarcode) {
+                            console.log('✅ Matched by barcode:', item.name);
+                            return true;
+                        }
+                        // Fallback: match by ID
+                        if (item.id.toString() === accumulatedBarcode) {
+                            console.log('✅ Matched by ID:', item.name);
+                            return true;
+                        }
+                        // Fallback: match by name contains
+                        if (item.name.toLowerCase().includes(accumulatedBarcode.toLowerCase())) {
+                            console.log('✅ Matched by name:', item.name);
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    if (foundItem) {
+                        addItem(foundItem);
+                        console.log('✅ Item added to cart:', foundItem.name, 'Price:', foundItem.default_price);
+                    } else {
+                        console.warn('❌ No item found for barcode:', accumulatedBarcode);
+                    }
+
+                    // Reset barcode for next scan
+                    accumulatedBarcode = '';
+                    setBarcode('');
+                }
+                event.preventDefault();
+                return;
+            }
+
+            // Accumulate regular characters (not special keys)
+            if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                accumulatedBarcode += event.key;
+                setBarcode(accumulatedBarcode);
+
+                // Clear existing timeout
+                if (barcodeTimeout) {
+                    clearTimeout(barcodeTimeout);
+                }
+
+                // Reset barcode if no input for 250ms (scanner should finish by then)
+                barcodeTimeout = setTimeout(() => {
+                    console.warn('⏱️ Barcode timeout - no input for 250ms. Clearing:', accumulatedBarcode);
+                    accumulatedBarcode = '';
+                    setBarcode('');
+                }, 250); // Increased from 100ms to 250ms
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyPress);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyPress);
+            if (barcodeTimeout) {
+                clearTimeout(barcodeTimeout);
+            }
+        };
+    }, [items, addItem]); // ← Removed 'barcode' dependency!
 
     return (
         <POSLayout

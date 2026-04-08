@@ -12,7 +12,11 @@ export default function PaymentModal({
     exchangeRate,
     paymentGateways = [],
 }) {
-    const { getCartTotal, selectedCustomer, cart } = useCartStore();
+    // Use selective subscriptions instead of destructuring all at once
+    const getCartTotal = useCartStore((state) => state.getCartTotal);
+    const selectedCustomer = useCartStore((state) => state.selectedCustomer);
+    const cart = useCartStore((state) => state.cart);
+    
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [selectedGatewayCode, setSelectedGatewayCode] = useState('');
     const [cashReceived, setCashReceived] = useState('');
@@ -63,8 +67,15 @@ export default function PaymentModal({
         };
     }, [isOpen, onClose]);
 
-    // Compute total with useMemo to ensure it updates whenever cart changes
-    const total = useMemo(() => getCartTotal(), [cart]);
+    // Memoize total calculation - recalculates when cart changes
+    const total = useMemo(() => {
+        if (cart.length === 0) return 0;
+        return cart.reduce((sum, item) => {
+            const price = item.custom_price_sold_at || item.default_price || 0;
+            const qty = item.qty || 0;
+            return sum + (price * qty);
+        }, 0);
+    }, [cart]);
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
     const formatUsd = (amount) =>
         new Intl.NumberFormat('en-US', {

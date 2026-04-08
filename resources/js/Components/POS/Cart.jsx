@@ -8,7 +8,26 @@ import PaymentModal from './PaymentModal';
 import ReceiptModal from './ReceiptModal';
 
 export default function Cart({ customers, exchangeRate, paymentGateways }) {
-    const { cart, selectedCustomer, removeItem, updateQty, setQty, setCustomPrice, getCartTotal, clearCart } = useCartStore();
+    // Use selective subscriptions instead of destructuring all at once
+    const cart = useCartStore((state) => state.cart);
+    const selectedCustomer = useCartStore((state) => state.selectedCustomer);
+    const removeItem = useCartStore((state) => state.removeItem);
+    const updateQty = useCartStore((state) => state.updateQty);
+    const setQty = useCartStore((state) => state.setQty);
+    const setCustomPrice = useCartStore((state) => state.setCustomPrice);
+    const getCartTotal = useCartStore((state) => state.getCartTotal);
+    const clearCart = useCartStore((state) => state.clearCart);
+    
+    // Memoize total calculation - recalculates when cart changes
+    const cartTotal = useMemo(() => {
+        if (cart.length === 0) return 0;
+        return cart.reduce((total, item) => {
+            const price = item.custom_price_sold_at || item.default_price || 0;
+            const qty = item.qty || 0;
+            return total + (price * qty);
+        }, 0);
+    }, [cart]);
+    
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [receiptData, setReceiptData] = useState(null);
@@ -17,9 +36,6 @@ export default function Cart({ customers, exchangeRate, paymentGateways }) {
     const [editingPrice, setEditingPrice] = useState(null);
 
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
-    
-    // Compute total with useMemo to ensure it updates whenever cart changes
-    const cartTotal = useMemo(() => getCartTotal(), [cart]);
 
     return (
         <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">

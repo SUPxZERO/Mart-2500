@@ -1,8 +1,6 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
 
-export const useCartStore = create(
-    subscribeWithSelector((set, get) => ({
+export const useCartStore = create((set, get) => ({
         cart: [],
         selectedCustomer: null,
 
@@ -19,6 +17,7 @@ export const useCartStore = create(
                 }
                 
                 // New item, add to cart with qty = 1 and default price (always integer KHR)
+                const price = item.default_price ? Math.round(item.default_price) : 0;
                 return {
                     cart: [
                         ...state.cart,
@@ -26,7 +25,8 @@ export const useCartStore = create(
                             ...item,
                             qty: 1,
                             // Guard: ensure price is always a safe integer (no floats)
-                            custom_price_sold_at: Math.round(item.default_price)
+                            custom_price_sold_at: price,
+                            default_price: item.default_price || 0
                         }
                     ]
                 };
@@ -84,7 +84,11 @@ export const useCartStore = create(
     // Selectors/Computed values
     getCartTotal: () => {
         const state = get();
-        return state.cart.reduce((total, item) => total + (item.custom_price_sold_at * item.qty), 0);
+        return state.cart.reduce((total, item) => {
+            const price = item.custom_price_sold_at || item.default_price || 0;
+            const qty = item.qty || 0;
+            const itemTotal = Math.max(0, price * qty); // Ensure no negative values
+            return total + itemTotal;
+        }, 0);
     }
-    }))
-);
+}));

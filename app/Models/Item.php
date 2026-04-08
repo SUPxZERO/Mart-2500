@@ -9,6 +9,7 @@ class Item extends Model
 {
     protected $fillable = [
         'name',
+        'barcode',
         'default_cost',
         'default_price',
         'category',

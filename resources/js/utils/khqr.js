@@ -5,6 +5,18 @@ const CURRENCY_MAP = {
     USD: khqrData.currency.usd,
 };
 
+// Bank code mappings for account ID format conversion
+const BANK_CODES = {
+    'aclb': 'ACLB',
+    'aba': 'ABA',
+    'aba bank': 'ABA',
+    'nbc': 'NBC',
+    'national bank': 'NBC',
+    'canadia': 'CANADIA',
+    'metfone': 'METFONE',
+    'vattanac': 'VATTANAC',
+};
+
 function formatDynamicAmount(amountKhr, currencyMode, exchangeRate) {
     if (!amountKhr) {
         return undefined;
@@ -26,11 +38,69 @@ function normalizeString(value) {
     return String(value).trim();
 }
 
+/**
+ * Smart account ID formatter - converts various input formats to username@bankcode
+ * @param {string} accountId - Raw account ID input (can be: username@bank, username, phone, etc.)
+ * @param {string} bankCode - Optional bank code (e.g., 'aclb', 'aba')
+ * @returns {string} - Formatted account ID as username@bankcode
+ */
+function formatBakongAccountId(accountId, bankCode = '') {
+    const normalized = normalizeString(accountId);
+    const bank = normalizeString(bankCode).toLowerCase();
+    
+    if (!normalized) {
+        return '';
+    }
+
+    // If already in correct format (contains @), return as-is
+    if (normalized.includes('@')) {
+        console.log('🔑 Account ID already in correct format:', normalized);
+        return normalized;
+    }
+
+    // If bank code provided, append it
+    if (bank && BANK_CODES[bank]) {
+        const formattedBank = BANK_CODES[bank].toLowerCase();
+        const formatted = `${normalized}@${formattedBank}`;
+        console.log('🔑 Account ID formatted with bank code:', formatted);
+        return formatted;
+    }
+
+    // If no bank code, return as-is and let Bakong lib handle it
+    console.log('⚠️ Account ID format:', normalized, '(no bank code provided)');
+    return normalized;
+}
+
 function normalizeKhqrError(error) {
     const message = error?.message || String(error);
 
+    // Log full error for debugging
+    console.error('🔴 KHQR Error Details:', {
+        message,
+        name: error?.name,
+        code: error?.code,
+        fullError: error,
+    });
+
+    // Bakong-specific error messages
+    if (message.includes('Account not found') || message.includes('account') || message.toLowerCase().includes('accountid')) {
+        return 'Account ID not found at Bakong. Please verify the account exists and is active. Format should be: username@bankcode (e.g., sokang_seng@aclb)';
+    }
+
+    if (message.includes('TIMEOUT') || message.includes('timeout')) {
+        return 'Connection timeout contacting Bakong server. Try again or use Uploaded Mode with your bank KHQR payload instead.';
+    }
+
+    if (message.includes('CONNECTION') || message.includes('connection')) {
+        return 'Connection failed to Bakong server. This is usually temporary. Try again in a moment or use Uploaded Mode.';
+    }
+
     if (message.includes('slice is not a function')) {
-        return 'KHQR input is not a valid raw QR text string. Paste the full payload text that starts with 000201, not an image, link, or screenshot.';
+        return 'Input is not a valid raw QR payload. Paste the full text starting with 000201, not an image or screenshot.';
+    }
+
+    if (message.includes('Invalid') || message.includes('invalid')) {
+        return 'Invalid format or data. Check account ID format (username@bankcode) and required fields.';
     }
 
     return message;
@@ -102,7 +172,9 @@ export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = nul
         };
     }
 
+    // Mode 1: Uploaded payload (from bank app/portal)
     if (gateway.qr_mode === 'uploaded_payload') {
+        console.log('📤 Using uploaded KHQR payload mode');
         return inspectKhqrPayload(gateway.khqr_payload);
     }
 
@@ -111,10 +183,12 @@ export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = nul
         normalizeString(gateway.display_name) ||
         'Merchant';
     const merchantCity = normalizeString(gateway.merchant_city) || 'Phnom Penh';
-    const bakongAccountId =
-        normalizeString(gateway.bakong_account_id) ||
-        normalizeString(gateway.bakong_id);
-    const optionalData = buildOptionalData(gateway, amountKhr, exchangeRate);
+    
+    // Format account ID - accepts multiple formats and converts to username@bankcode
+    const rawAccountId = normalizeString(gateway.bakong_account_id) ||
+                        normalizeString(gateway.bakong_id);
+    const bankCode = normalizeString(gateway.acquiring_bank) || '';
+    const bakongAccountId = formatBakongAccountId(rawAccountId, bankCode);
 
     if (!bakongAccountId) {
         return {
@@ -127,6 +201,15 @@ export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = nul
         const khqr = new BakongKHQR();
         let response;
 
+        console.log('🔄 Building KHQR...', {
+            mode: gateway.qr_mode,
+            accountId: bakongAccountId,
+            merchantName,
+            merchantCity,
+            isDynamic: gateway.is_dynamic,
+        });
+
+        // Mode 2: Generated merchant KHQR
         if (gateway.qr_mode === 'generated_merchant') {
             const merchantId = normalizeString(gateway.merchant_id);
             const acquiringBank = normalizeString(gateway.acquiring_bank);
@@ -146,11 +229,15 @@ export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = nul
                 merchantCity,
                 merchantId,
                 acquiringBank,
-                optionalData,
+                buildOptionalData(gateway, amountKhr, exchangeRate),
             );
 
             response = khqr.generateMerchant(merchantInfo);
-        } else {
+            console.log('🏪 Merchant mode response:', response?.status?.code);
+        } 
+        // Mode 3: Generated individual KHQR
+        else {
+            const optionalData = buildOptionalData(gateway, amountKhr, exchangeRate);
             const individualInfo = new IndividualInfo(
                 bakongAccountId,
                 merchantName,
@@ -159,16 +246,23 @@ export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = nul
             );
 
             response = khqr.generateIndividual(individualInfo);
+            console.log('👤 Individual mode response:', response?.status?.code);
         }
 
+        // Check for success
         if (response?.status?.code !== 0 || !response?.data?.qr) {
+            const errorMsg = response?.status?.message || 'Failed to generate KHQR.';
+            console.error('❌ KHQR generation failed:', errorMsg);
+            
             return {
                 ok: false,
-                errors: [response?.status?.message || 'Failed to generate KHQR.'],
+                errors: [errorMsg],
             };
         }
 
+        // Decode and return successful QR
         const decoded = BakongKHQR.decode(response.data.qr);
+        console.log('✅ KHQR generated successfully');
 
         return {
             ok: true,
@@ -177,9 +271,12 @@ export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = nul
             source: gateway.qr_mode,
         };
     } catch (error) {
+        const errorMsg = normalizeKhqrError(error);
+        console.error('❌ KHQR generation error:', errorMsg);
+        
         return {
             ok: false,
-            errors: [normalizeKhqrError(error)],
+            errors: [errorMsg],
         };
     }
 }

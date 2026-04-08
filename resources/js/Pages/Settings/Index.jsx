@@ -46,6 +46,7 @@ export default function SettingsIndex({ exchangeRate, paymentGateways, offlineSt
                     qr_mode: gateway.qr_mode || 'uploaded_payload',
                     khqr_type: gateway.khqr_type || 'individual',
                     bakong_account_id: gateway.bakong_account_id || '',
+                    bank_code: gateway.bank_code || '',
                     account_information: gateway.account_information || '',
                     acquiring_bank: gateway.acquiring_bank || '',
                     account_name: gateway.account_name || '',
@@ -189,8 +190,12 @@ export default function SettingsIndex({ exchangeRate, paymentGateways, offlineSt
                                                 type="text"
                                                 value={gateway.account_name || ''}
                                                 onChange={(e) => updateGateway(gateway.code, 'account_name', e.target.value)}
+                                                placeholder="e.g., Mart 2500"
                                                 className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                             />
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Your business/merchant name. This appears on the QR code when customers scan it.
+                                            </p>
                                         </div>
                                         <div>
                                             <label className="mb-2 block text-sm font-bold text-slate-700">Bakong Account ID</label>
@@ -201,8 +206,31 @@ export default function SettingsIndex({ exchangeRate, paymentGateways, offlineSt
                                                     updateGateway(gateway.code, 'bakong_account_id', e.target.value);
                                                     updateGateway(gateway.code, 'bakong_id', e.target.value);
                                                 }}
+                                                placeholder="e.g., sokang_seng or sokang_seng@aclb"
                                                 className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                             />
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Your Bakong username or account. Format: username@bankcode (e.g., sokang_seng@aclb). Get from Bakong merchant portal.
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="mb-2 block text-sm font-bold text-slate-700">Bank Code</label>
+                                            <select
+                                                value={gateway.bank_code || 'aclb'}
+                                                onChange={(e) => updateGateway(gateway.code, 'bank_code', e.target.value)}
+                                                className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                                            >
+                                                <option value="">-- Select your bank --</option>
+                                                <option value="aclb">ACLB (Angkor Commercial Bank)</option>
+                                                <option value="aba">ABA Bank</option>
+                                                <option value="nbc">NBC (National Bank of Cambodia)</option>
+                                                <option value="canadia">Canadia Bank</option>
+                                                <option value="metfone">Metfone</option>
+                                                <option value="vattanac">Vattanac Bank</option>
+                                            </select>
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Your bank. Used to auto-format account ID as username@bankcode when generating KHQR.
+                                            </p>
                                         </div>
                                         <div>
                                             <label className="mb-2 block text-sm font-bold text-slate-700">Merchant City</label>
@@ -210,8 +238,12 @@ export default function SettingsIndex({ exchangeRate, paymentGateways, offlineSt
                                                 type="text"
                                                 value={gateway.merchant_city || ''}
                                                 onChange={(e) => updateGateway(gateway.code, 'merchant_city', e.target.value)}
+                                                placeholder="e.g., Phnom Penh"
                                                 className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                             />
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                City where your merchant business is located. This appears on KHQR transactions.
+                                            </p>
                                         </div>
                                     </>
                                 )}
@@ -224,8 +256,12 @@ export default function SettingsIndex({ exchangeRate, paymentGateways, offlineSt
                                                 type="text"
                                                 value={gateway.merchant_id || ''}
                                                 onChange={(e) => updateGateway(gateway.code, 'merchant_id', e.target.value)}
+                                                placeholder="e.g., 12345678"
                                                 className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                             />
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Your merchant ID from the acquiring bank or Bakong merchant portal.
+                                            </p>
                                         </div>
                                         <div>
                                             <label className="mb-2 block text-sm font-bold text-slate-700">Acquiring Bank</label>
@@ -233,9 +269,12 @@ export default function SettingsIndex({ exchangeRate, paymentGateways, offlineSt
                                                 type="text"
                                                 value={gateway.acquiring_bank || ''}
                                                 onChange={(e) => updateGateway(gateway.code, 'acquiring_bank', e.target.value)}
-                                                placeholder="Example: DEVBKKHPXXX"
+                                                placeholder="Example: BKKHKHPP (SWIFT code of your bank)"
                                                 className="block w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                                             />
+                                            <p className="mt-2 text-xs text-slate-500">
+                                                Your bank's SWIFT code (8-11 letters). Example: BKKHKHPP for National Bank of Cambodia.
+                                            </p>
                                         </div>
                                     </>
                                 )}

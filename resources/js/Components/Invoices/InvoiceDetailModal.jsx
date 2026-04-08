@@ -9,11 +9,13 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
     const [invoice, setInvoice] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+    const [pdfError, setPdfError] = useState(null);
     const receiptRef = useRef(null);
 
     useEffect(() => {
         if (isOpen && invoiceId) {
             setIsLoading(true);
+            setPdfError(null); // Clear previous errors when opening
             axios.get(`/invoices/${invoiceId}`)
                 .then(res => {
                     setInvoice(res.data.invoice);
@@ -69,9 +71,16 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
         }
 
         setIsDownloadingPdf(true);
+        setPdfError(null); // Clear previous errors
 
         try {
-            await exportInvoicePdf(receiptRef.current, `${invoice.invoice_number}.pdf`);
+            console.log('📥 Starting PDF download for invoice:', invoice.invoice_number);
+            await exportInvoicePdf(receiptRef.current, `INV-${invoice.invoice_number}.pdf`);
+            console.log('✅ PDF downloaded successfully');
+        } catch (error) {
+            const errorMsg = error?.message || 'Unknown error occurred';
+            console.error('❌ PDF download failed:', errorMsg);
+            setPdfError(errorMsg);
         } finally {
             setIsDownloadingPdf(false);
         }
@@ -180,6 +189,20 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
                 {/* Actions (Not rendered in print) */}
                 {invoice && !isLoading && (
                     <div className="mt-4 w-full print:hidden flex flex-col gap-2">
+                        {/* Error Message */}
+                        {pdfError && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                <p className="font-bold">❌ PDF Error</p>
+                                <p className="text-xs mt-1">{pdfError}</p>
+                                <button
+                                    onClick={() => setPdfError(null)}
+                                    className="mt-2 text-xs font-bold text-red-600 hover:text-red-800 underline"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        )}
+                        
                         <button
                             type="button"
                             onClick={handleDownloadPdf}

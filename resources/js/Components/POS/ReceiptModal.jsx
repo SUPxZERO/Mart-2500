@@ -3,7 +3,10 @@ import { Printer, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '@/store/useCartStore';
 
 export default function ReceiptModal({ isOpen, onClose, paymentData }) {
-    const { cart, selectedCustomer, getCartTotal, clearCart } = useCartStore();
+    // Use selective subscriptions instead of destructuring all at once
+    const cart = useCartStore((state) => state.cart);
+    const selectedCustomer = useCartStore((state) => state.selectedCustomer);
+    const clearCart = useCartStore((state) => state.clearCart);
 
     useEffect(() => {
         if (!isOpen || !paymentData) {
@@ -25,8 +28,15 @@ export default function ReceiptModal({ isOpen, onClose, paymentData }) {
 
     if (!isOpen || !paymentData) return null;
 
-    // Compute total with useMemo to ensure it updates whenever cart changes
-    const total = useMemo(() => getCartTotal(), [cart]);
+    // Memoize total calculation - recalculates when cart changes
+    const total = useMemo(() => {
+        if (cart.length === 0) return 0;
+        return cart.reduce((sum, item) => {
+            const price = item.custom_price_sold_at || item.default_price || 0;
+            const qty = item.qty || 0;
+            return sum + (price * qty);
+        }, 0);
+    }, [cart]);
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
     const date = new Date().toLocaleString('en-GB');
 

@@ -13,6 +13,7 @@ class PaymentGateway extends Model
         'qr_mode',
         'khqr_type',
         'bakong_account_id',
+        'bank_code',
         'account_information',
         'acquiring_bank',
         'account_name',

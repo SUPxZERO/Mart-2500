@@ -58,16 +58,48 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Export all invoices as an Excel file.
+     * Export invoices as an Excel file with applied filters.
      */
     public function export(Request $request)
     {
         $filters = $this->getFilters($request);
 
+        // Generate filename based on period
+        $filename = $this->generateExportFilename($filters);
+
         return Excel::download(
             new InvoicesExport($filters['period'], $filters['from'], $filters['to']),
-            'mart2500-invoices-' . date('Y-m-d') . '.xlsx'
+            $filename
         );
+    }
+
+    protected function generateExportFilename(array $filters): string
+    {
+        $now = now();
+        $date = $now->format('Y-m-d');
+
+        switch ($filters['period']) {
+            case 'week':
+                $start = $now->copy()->startOfWeek()->format('m-d');
+                $end = $now->copy()->endOfWeek()->format('m-d');
+                return "invoices_week_{$start}_to_{$end}_{$date}.xlsx";
+
+            case 'month':
+                $month = $now->format('Y-m');
+                return "invoices_month_{$month}.xlsx";
+
+            case 'year':
+                $year = $now->format('Y');
+                return "invoices_year_{$year}.xlsx";
+
+            case 'range':
+                if ($filters['from'] && $filters['to']) {
+                    return "invoices_range_{$filters['from']}_to_{$filters['to']}.xlsx";
+                }
+                break;
+        }
+
+        return "invoices_{$date}.xlsx";
     }
 
     protected function getFilters(Request $request): array

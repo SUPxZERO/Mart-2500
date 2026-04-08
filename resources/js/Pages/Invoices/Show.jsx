@@ -8,6 +8,7 @@ import { exportInvoicePdf } from '@/utils/exportInvoicePdf';
 export default function InvoiceShow({ invoice }) {
     const invoiceRef = useRef(null);
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+    const [pdfError, setPdfError] = useState(null);
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
     
     const formatDate = (dateString) => {
@@ -28,12 +29,19 @@ export default function InvoiceShow({ invoice }) {
         }
 
         setIsDownloadingPdf(true);
+        setPdfError(null); // Clear previous errors
 
         try {
+            console.log('📥 Starting PDF download for invoice:', invoice.invoice_number);
             await exportInvoicePdf(
                 invoiceRef.current,
-                `${invoice.invoice_number}.pdf`,
+                `INV-${invoice.invoice_number}.pdf`,
             );
+            console.log('✅ PDF downloaded successfully');
+        } catch (error) {
+            const errorMsg = error?.message || 'Unknown error occurred';
+            console.error('❌ PDF download failed:', errorMsg);
+            setPdfError(errorMsg);
         } finally {
             setIsDownloadingPdf(false);
         }
@@ -57,6 +65,20 @@ export default function InvoiceShow({ invoice }) {
                     Back to Invoices
                 </Link>
                 
+                {/* Error Message */}
+                {pdfError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex-1">
+                        <p className="font-bold">❌ PDF Error</p>
+                        <p className="text-xs mt-1">{pdfError}</p>
+                        <button
+                            onClick={() => setPdfError(null)}
+                            className="mt-2 text-xs font-bold text-red-600 hover:text-red-800 underline"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
+                
                 <div className="flex flex-wrap gap-3">
                     <button
                         type="button"
@@ -78,7 +100,7 @@ export default function InvoiceShow({ invoice }) {
             </div>
 
             {/* A4 Document Area */}
-            <div ref={invoiceRef} className="mx-auto max-w-4xl bg-white shadow-xl rounded-sm print:shadow-none print:w-full print:max-w-none print:p-0">
+            <div ref={invoiceRef} id="invoice-paper" className="mx-auto max-w-4xl bg-white shadow-xl rounded-sm print:shadow-none print:w-full print:max-w-none print:p-0 print:m-0 print:rounded-none print:bg-white">
                 <div className="p-10 sm:p-16">
                     
                     {/* Invoice Header */}
