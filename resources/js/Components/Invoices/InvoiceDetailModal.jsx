@@ -10,7 +10,12 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
     const [isLoading, setIsLoading] = useState(false);
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
     const [pdfError, setPdfError] = useState(null);
+    const [imageErrors, setImageErrors] = useState({});
     const receiptRef = useRef(null);
+
+    const handleImageError = (itemId) => {
+        setImageErrors(prev => ({ ...prev, [itemId]: true }));
+    };
 
     useEffect(() => {
         if (isOpen && invoiceId) {
@@ -147,8 +152,8 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
                                     <tr key={item.id || index} className="align-top border-b border-slate-50 last:border-0">
                                         <td className="py-3 pr-2">
                                             <div className="flex items-center gap-2">
-                                                {item.image_url ? (
-                                                    <img src={item.image_url} alt={item.item_name} className="w-8 h-8 rounded shrink-0 object-cover border border-slate-200 print:scale-150 print:mr-2" />
+                                                {item.image_url && !imageErrors[item.id] ? (
+                                                    <img src={item.image_url} alt={item.item_name} className="w-8 h-8 rounded shrink-0 object-cover border border-slate-200 print:scale-150 print:mr-2" onError={() => handleImageError(item.id)} />
                                                 ) : (
                                                     <div className="w-8 h-8 rounded shrink-0 bg-slate-100 flex items-center justify-center text-slate-300 border border-slate-200 text-xs print:scale-150 print:mr-2">📦</div>
                                                 )}

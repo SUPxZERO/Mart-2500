@@ -48,6 +48,11 @@ Route::post('/settings/rate', [\App\Http\Controllers\SettingsController::class, 
 Route::post('/settings/payment-methods', [\App\Http\Controllers\SettingsController::class, 'updatePaymentMethods']);
 Route::get('/settings/backup', [\App\Http\Controllers\SettingsController::class, 'downloadBackup']);
 
+// Image serving route
+Route::get('/item-image/{path}', [\App\Http\Controllers\ImageController::class, 'serve'])
+    ->where('path', '.*')
+    ->name('image.serve');
+
 // Backend transaction layer
 Route::post('/api/invoices', [\App\Http\Controllers\Api\InvoiceController::class, 'store']);
 

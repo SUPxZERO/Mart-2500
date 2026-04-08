@@ -33,7 +33,6 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             'Date',
             'Customer',
             'Payment Method',
-            'Payment Provider',
             'Status',
             'Invoice Total (KHR)',
         ];
@@ -46,7 +45,6 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             $invoice->created_at->format('Y-m-d H:i:s'),
             $invoice->customer ? $invoice->customer->name : 'Walk-in Customer',
             $invoice->payment_method,
-            $invoice->payment_provider,
             $invoice->status,
             $invoice->total_khr,
         ];
@@ -86,11 +84,6 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
 
             if ($from->lte($to)) {
                 $query->whereBetween('created_at', [$from, $to]);
-            }
-        }
-    }
-}
-
             }
         }
     }

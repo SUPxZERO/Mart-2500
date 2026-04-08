@@ -6,8 +6,13 @@ import { Package, Plus, Pencil, ToggleLeft, ToggleRight, Search, CheckCircle2, T
 export default function ItemsIndex({ items, filters }) {
     const { flash } = usePage().props;
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [imageErrors, setImageErrors] = useState({});
 
     const formatMoney = (n) => new Intl.NumberFormat('en-US').format(n);
+
+    const handleImageError = (itemId) => {
+        setImageErrors(prev => ({ ...prev, [itemId]: true }));
+    };
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -94,11 +99,11 @@ export default function ItemsIndex({ items, filters }) {
                                         <tr key={item.id} className={`hover:bg-slate-50 transition-colors ${!item.is_active ? 'opacity-50' : ''}`}>
                                             <td className="px-6 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    {item.image_url ? (
-                                                        <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0" />
+                                                    {item.image_url && !imageErrors[item.id] ? (
+                                                        <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0" onError={() => handleImageError(item.id)} />
                                                     ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0">
-                                                            <Package className="w-5 h-5 text-slate-400" />
+                                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0 text-lg">
+                                                            📦
                                                         </div>
                                                     )}
                                                     <span className="font-semibold text-slate-800">{item.name}</span>

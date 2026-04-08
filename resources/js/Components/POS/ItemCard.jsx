@@ -1,6 +1,9 @@
+import { useState } from 'react';
+
 export default function ItemCard({ item, qtyInCart = 0, onClick }) {
+    const [imageError, setImageError] = useState(false);
     const formattedPrice = new Intl.NumberFormat('en-US').format(item.default_price);
-    const hasImage = !!item.image_url;
+    const hasImage = !!item.image_url && !imageError;
     const inCart = qtyInCart > 0;
 
     return (
@@ -26,6 +29,7 @@ export default function ItemCard({ item, qtyInCart = 0, onClick }) {
                         src={item.image_url}
                         alt={item.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={() => setImageError(true)}
                     />
                 ) : (
                     <div className="w-full h-full bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center">

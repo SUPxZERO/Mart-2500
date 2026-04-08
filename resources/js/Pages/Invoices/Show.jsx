@@ -9,7 +9,12 @@ export default function InvoiceShow({ invoice }) {
     const invoiceRef = useRef(null);
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
     const [pdfError, setPdfError] = useState(null);
+    const [imageErrors, setImageErrors] = useState({});
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
+    
+    const handleImageError = (itemId) => {
+        setImageErrors(prev => ({ ...prev, [itemId]: true }));
+    };
     
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-GB', {
@@ -156,8 +161,8 @@ export default function InvoiceShow({ invoice }) {
                                     <tr key={item.id || idx}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
-                                                {item.image_url ? (
-                                                    <img src={item.image_url} alt={item.item_name} className="w-12 h-12 rounded-lg object-cover border border-slate-100 shadow-sm print:hidden" />
+                                                {item.image_url && !imageErrors[item.id] ? (
+                                                    <img src={item.image_url} alt={item.item_name} className="w-12 h-12 rounded-lg object-cover border border-slate-100 shadow-sm print:hidden" onError={() => handleImageError(item.id)} />
                                                 ) : (
                                                     <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200 print:hidden text-lg">📦</div>
                                                 )}
