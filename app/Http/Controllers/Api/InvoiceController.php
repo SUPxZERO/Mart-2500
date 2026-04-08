@@ -30,6 +30,7 @@ class InvoiceController extends Controller
                 'customer_id'    => $request->customer_id,
                 'total_khr'      => $totalKhr,
                 'payment_method' => $request->payment_method,
+                'payment_provider' => $request->payment_provider,
                 'status'         => $request->payment_method === 'Unpaid_Debt' ? 'Added_To_Debt' : 'Completed',
             ]);
 
@@ -59,6 +60,7 @@ class InvoiceController extends Controller
                             'customer_id'     => $customer->id,
                             'amount_paid_khr' => $totalKhr,
                             'payment_method'  => $request->payment_method,
+                            'payment_provider' => $request->payment_provider,
                         ]);
                     }
                 }

@@ -146,13 +146,16 @@ class DashboardController extends Controller
             ->get();
 
         // ── Payment Method Breakdown ──────────────────────────────────
-        $paymentBreakdown = Invoice::select('payment_method', DB::raw('SUM(total_khr) as total_value'))
+        $paymentBreakdown = Invoice::select(
+                DB::raw("COALESCE(payment_provider, payment_method) as payment_label"),
+                DB::raw('SUM(total_khr) as total_value')
+            )
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('status', 'Completed')
-            ->groupBy('payment_method')
+            ->groupBy('payment_label')
             ->get()
             ->map(fn($row) => [
-                'name' => $row->payment_method,
+                'name' => $row->payment_label,
                 'value' => (int) $row->total_value,
             ]);
 

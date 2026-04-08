@@ -45,6 +45,7 @@ export default function ItemsIndex({ items, filters }) {
                                 <Search className="h-4 w-4 text-slate-400" />
                             </div>
                             <input
+                                data-page-search="true"
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}

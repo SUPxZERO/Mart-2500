@@ -1,15 +1,27 @@
-import { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
 import { t } from '@/i18n';
 import POSLayout from '@/Layouts/POSLayout';
-import { FileText, Eye, User, Calendar, DollarSign, CheckCircle2, Download } from 'lucide-react';
+import { FileText, Eye, User, Calendar, DollarSign, CheckCircle2, Download, Filter } from 'lucide-react';
 import InvoiceDetailModal from '@/Components/Invoices/InvoiceDetailModal';
 
-export default function InvoicesIndex({ invoices }) {
+export default function InvoicesIndex({ invoices, filters }) {
     const [selectedInvoice, setSelectedInvoice] = useState(null);
-    const [isExporting, setIsExporting] = useState(false);
+    const [period, setPeriod] = useState(filters?.period || 'month');
+    const [from, setFrom] = useState(filters?.from || '');
+    const [to, setTo] = useState(filters?.to || '');
 
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
+    const activeFilterParams = useMemo(() => {
+        const params = { period };
+
+        if (period === 'range') {
+            if (from) params.from = from;
+            if (to) params.to = to;
+        }
+
+        return params;
+    }, [period, from, to]);
     
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-GB', {
@@ -18,12 +30,15 @@ export default function InvoicesIndex({ invoices }) {
         });
     };
 
-    const getStatusBadge = (status, paymentMethod) => {
+    const getPaymentLabel = (invoice) =>
+        (invoice.payment_provider || invoice.payment_method || '').replace('_', ' ');
+
+    const getStatusBadge = (status, paymentLabel) => {
         if (status === 'Completed') {
             return (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <CheckCircle2 className="w-3 h-3" />
-                    {t('invoices.paid_method', { method: paymentMethod })}
+                    {t('invoices.paid_method', { method: paymentLabel })}
                 </span>
             );
         }
@@ -42,6 +57,34 @@ export default function InvoicesIndex({ invoices }) {
         );
     };
 
+    const applyFilters = () => {
+        router.get('/invoices', activeFilterParams, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handlePresetChange = (nextPeriod) => {
+        setPeriod(nextPeriod);
+
+        const nextParams = { period: nextPeriod };
+
+        if (nextPeriod === 'range') {
+            if (from) nextParams.from = from;
+            if (to) nextParams.to = to;
+        }
+
+        router.get('/invoices', nextParams, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const exportHref = useMemo(() => {
+        const params = new URLSearchParams(activeFilterParams);
+        return `/invoices/export?${params.toString()}`;
+    }, [activeFilterParams]);
+
     return (
         <POSLayout
             title={t('invoices.title')}
@@ -49,15 +92,77 @@ export default function InvoicesIndex({ invoices }) {
             icon={FileText}
             contentClassName="space-y-4"
             header={
-                <div className="flex justify-end w-full lg:w-auto">
-                    <a
-                        href="/invoices/export"
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-bold text-white shadow-md transition-all hover:bg-indigo-700 active:scale-95 sm:w-auto"
-                        title="Download All Invoices Excel"
-                    >
-                        <Download className="h-5 w-5" />
-                        Export All to Excel
-                    </a>
+                <div className="flex w-full flex-col gap-4">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="flex flex-col gap-3">
+                            <div className="flex flex-wrap gap-2">
+                                {[
+                                    { value: 'week', label: 'This Week' },
+                                    { value: 'month', label: 'This Month' },
+                                    { value: 'year', label: 'This Year' },
+                                    { value: 'range', label: 'Date Range' },
+                                ].map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => handlePresetChange(option.value)}
+                                        className={`rounded-2xl border px-4 py-2 text-sm font-bold transition-colors ${
+                                            period === option.value
+                                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {period === 'range' && (
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                    <div className="w-full sm:w-48">
+                                        <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            From
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={from}
+                                            onChange={(e) => setFrom(e.target.value)}
+                                            className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    </div>
+                                    <div className="w-full sm:w-48">
+                                        <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-400">
+                                            To
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={to}
+                                            onChange={(e) => setTo(e.target.value)}
+                                            className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={applyFilters}
+                                        disabled={!from || !to}
+                                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                    >
+                                        <Filter className="h-4 w-4" />
+                                        Apply Range
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <a
+                            href={exportHref}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-bold text-white shadow-md transition-all hover:bg-indigo-700 active:scale-95 sm:w-auto"
+                            title="Export filtered invoices to Excel"
+                        >
+                            <Download className="h-5 w-5" />
+                            Export to Excel
+                        </a>
+                    </div>
                 </div>
             }
         >
@@ -102,16 +207,25 @@ export default function InvoicesIndex({ invoices }) {
                                         {formatMoney(invoice.total_khr)}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {getStatusBadge(invoice.status, invoice.payment_method)}
+                                        {getStatusBadge(invoice.status, getPaymentLabel(invoice))}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <button 
-                                            onClick={() => setSelectedInvoice(invoice)}
-                                            className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 transition-colors tooltip hover:bg-indigo-50 hover:text-indigo-600"
-                                            title={t('actions.view_receipt')}
-                                        >
-                                            <Eye className="h-5 w-5" />
-                                        </button>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button 
+                                                onClick={() => setSelectedInvoice(invoice)}
+                                                className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 transition-colors tooltip hover:bg-indigo-50 hover:text-indigo-600"
+                                                title={t('actions.view_receipt')}
+                                            >
+                                                <Eye className="h-5 w-5" />
+                                            </button>
+                                            <a
+                                                href={`/invoices/${invoice.id}/show`}
+                                                className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600"
+                                                title="Open invoice for PDF download"
+                                            >
+                                                <Download className="h-5 w-5" />
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -121,25 +235,38 @@ export default function InvoicesIndex({ invoices }) {
 
                 <div className="divide-y divide-slate-100 md:hidden">
                     {invoices.data.map((invoice) => (
-                        <button
+                        <div
                             key={invoice.id}
-                            type="button"
-                            onClick={() => setSelectedInvoice(invoice)}
-                            className="block w-full p-5 text-left transition-colors hover:bg-slate-50"
+                            className="p-5 transition-colors hover:bg-slate-50"
                         >
                             <div className="flex items-start justify-between gap-4">
-                                <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedInvoice(invoice)}
+                                    className="min-w-0 flex-1 text-left"
+                                >
                                     <p className="font-mono text-sm font-semibold text-indigo-600">
                                         {invoice.invoice_number}
                                     </p>
                                     <p className="mt-1 text-sm text-slate-500">
                                         {formatDate(invoice.created_at)}
                                     </p>
-                                </div>
-                                <Eye className="mt-1 h-5 w-5 shrink-0 text-slate-300" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedInvoice(invoice)}
+                                    className="shrink-0"
+                                >
+                                    <Eye className="mt-1 h-5 w-5 text-slate-300" />
+                                </button>
                             </div>
 
-                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedInvoice(invoice)}
+                                className="mt-4 block w-full text-left"
+                            >
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <div className="rounded-2xl bg-slate-50 p-3">
                                     <p className="text-xs uppercase tracking-wider text-slate-400">{t('invoices.customer')}</p>
                                     <p className="mt-1 font-medium text-slate-700">
@@ -152,12 +279,23 @@ export default function InvoicesIndex({ invoices }) {
                                         {formatMoney(invoice.total_khr)} KHR
                                     </p>
                                 </div>
-                            </div>
+                                </div>
 
-                            <div className="mt-3">
-                                {getStatusBadge(invoice.status, invoice.payment_method)}
+                                <div className="mt-3">
+                                    {getStatusBadge(invoice.status, getPaymentLabel(invoice))}
+                                </div>
+                            </button>
+
+                            <div className="mt-3 flex justify-end">
+                                <a
+                                    href={`/invoices/${invoice.id}/show`}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    PDF
+                                </a>
                             </div>
-                        </button>
+                        </div>
                     ))}
                 </div>
                 

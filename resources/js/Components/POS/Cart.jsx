@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import axios from 'axios';
 import { t } from '@/i18n';
 import { useCartStore } from '@/store/useCartStore';
@@ -7,7 +7,7 @@ import CustomerModal from './CustomerModal';
 import PaymentModal from './PaymentModal';
 import ReceiptModal from './ReceiptModal';
 
-export default function Cart({ customers }) {
+export default function Cart({ customers, exchangeRate, paymentGateways }) {
     const { cart, selectedCustomer, removeItem, updateQty, setQty, setCustomPrice, getCartTotal, clearCart } = useCartStore();
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -17,9 +17,12 @@ export default function Cart({ customers }) {
     const [editingPrice, setEditingPrice] = useState(null);
 
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
+    
+    // Compute total with useMemo to ensure it updates whenever cart changes
+    const cartTotal = useMemo(() => getCartTotal(), [cart]);
 
     return (
-        <div className="flex flex-col h-full w-full bg-white relative">
+        <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white">
             <div className="h-20 px-6 border-b border-slate-200 flex items-center justify-between bg-white shrink-0 shadow-sm z-10">
                 <h2 className="text-xl font-bold text-slate-800">{t('pos.current_order')}</h2>
                 {cart.length > 0 && (
@@ -33,7 +36,7 @@ export default function Cart({ customers }) {
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto w-full">
+            <div className="min-h-0 w-full flex-1 overflow-y-auto">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400">
                         <ShoppingCartIcon className="w-16 h-16 mb-4 text-slate-200" />
@@ -149,7 +152,7 @@ export default function Cart({ customers }) {
                 )}
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 shrink-0">
+            <div className="sticky bottom-0 shrink-0 border-t border-slate-200 bg-slate-50 px-6 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
                 {/* Customer Selector Button */}
                 <button
                     onClick={() => setIsCustomerModalOpen(true)}
@@ -171,7 +174,7 @@ export default function Cart({ customers }) {
                 <div className="flex justify-between items-end mb-4">
                     <span className="text-slate-500 font-medium">{t('pos.total')}</span>
                     <span className="text-2xl font-bold text-emerald-600">
-                        {formatMoney(getCartTotal())} <span className="text-sm">KHR</span>
+                        {formatMoney(cartTotal)} <span className="text-sm">KHR</span>
                     </span>
                 </div>
                 <button
@@ -192,6 +195,8 @@ export default function Cart({ customers }) {
             <PaymentModal 
                 isOpen={isPaymentModalOpen}
                 onClose={() => setIsPaymentModalOpen(false)}
+                exchangeRate={exchangeRate}
+                paymentGateways={paymentGateways}
                 onConfirm={async (paymentData) => {
                     setIsSubmitting(true);
                     
@@ -199,6 +204,7 @@ export default function Cart({ customers }) {
                         const payload = {
                             customer_id: selectedCustomer ? selectedCustomer.id : null,
                             payment_method: paymentData.method,
+                            payment_provider: paymentData.provider?.display_name || null,
                             received_khr: paymentData.received_khr,
                             items: cart.map(item => ({
                                 id: item.id,

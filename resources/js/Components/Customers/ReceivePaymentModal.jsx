@@ -1,25 +1,65 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { X, HandCoins, Banknote, QrCode } from 'lucide-react';
 
-export default function ReceivePaymentModal({ isOpen, onClose, customer }) {
+export default function ReceivePaymentModal({ isOpen, onClose, customer, exchangeRate }) {
     const [amountKhr, setAmountKhr] = useState(customer?.total_debt_balance > 0 ? customer.total_debt_balance.toString() : '');
+    const [currency, setCurrency] = useState('KHR');
     const [method, setMethod] = useState('Cash');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const usdToKhr = exchangeRate?.usd_to_khr || 4000;
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        setAmountKhr(customer?.total_debt_balance > 0 ? customer.total_debt_balance.toString() : '');
+        setCurrency('KHR');
+        setMethod('Cash');
+    }, [isOpen, customer]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isOpen, onClose]);
 
     if (!isOpen || !customer) return null;
 
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
+    const formatUsd = (amount) =>
+        new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    const enteredAmount = parseFloat(amountKhr) || 0;
+    const enteredAmountKhr =
+        currency === 'USD'
+            ? Math.round(enteredAmount * usdToKhr)
+            : Math.round(enteredAmount);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         
-        if (!amountKhr || parseInt(amountKhr) <= 0) return;
+        if (!amountKhr || enteredAmountKhr <= 0) return;
 
         setIsSubmitting(true);
 
         router.post(`/customers/${customer.id}/payment`, {
-            amount_khr: parseInt(amountKhr),
+            amount_khr: enteredAmountKhr,
             payment_method: method
         }, {
             preserveScroll: true,
@@ -56,7 +96,25 @@ export default function ReceivePaymentModal({ isOpen, onClose, customer }) {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Amount Received (KHR)</label>
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                            <label className="block text-sm font-bold text-slate-700">Amount Received ({currency})</label>
+                            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                                {['KHR', 'USD'].map((item) => (
+                                    <button
+                                        key={item}
+                                        type="button"
+                                        onClick={() => setCurrency(item)}
+                                        className={`rounded-lg px-3 py-1.5 text-sm font-bold transition-colors ${
+                                            currency === item
+                                                ? 'bg-white text-indigo-600 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        {item}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         <div className="relative">
                             <input 
                                 type="number" 
@@ -65,10 +123,22 @@ export default function ReceivePaymentModal({ isOpen, onClose, customer }) {
                                 value={amountKhr}
                                 onChange={e => setAmountKhr(e.target.value)}
                                 className="block w-full text-2xl font-bold pl-4 pr-16 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors"
+                                min="0"
+                                step={currency === 'USD' ? '0.01' : '1'}
                             />
                             <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                                <span className="text-slate-400 font-bold">KHR</span>
+                                <span className="text-slate-400 font-bold">{currency}</span>
                             </div>
+                        </div>
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                            <p className="font-semibold text-slate-600">
+                                Current rate: 1 USD = {formatMoney(usdToKhr)} KHR
+                            </p>
+                            {currency === 'USD' && enteredAmount > 0 && (
+                                <p className="mt-1 text-slate-500">
+                                    Equivalent: {formatMoney(enteredAmountKhr)} KHR
+                                </p>
+                            )}
                         </div>
                     </div>
 

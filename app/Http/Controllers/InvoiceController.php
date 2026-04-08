@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\Item;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Exports\InvoicesExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -13,14 +15,19 @@ class InvoiceController extends Controller
     /**
      * Display a paginated list of all invoices.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $this->getFilters($request);
+
         $invoices = Invoice::with('customer')
+            ->when(true, fn ($query) => $this->applyDateFilters($query, $filters))
             ->latest()
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
         return Inertia::render('Invoices/Index', [
-            'invoices' => $invoices
+            'invoices' => $invoices,
+            'filters' => $filters,
         ]);
     }
 
@@ -30,14 +37,7 @@ class InvoiceController extends Controller
     public function show(Invoice $invoice)
     {
         $invoice->load(['items', 'customer']);
-
-        // Attach image_urls to items by matching item_name
-        $itemNames = $invoice->items->pluck('item_name')->toArray();
-        $images = Item::whereIn('name', $itemNames)->pluck('image_url', 'name');
-        
-        $invoice->items->each(function ($item) use ($images) {
-            $item->image_url = $images[$item->item_name] ?? null;
-        });
+        $this->attachItemImages($invoice);
 
         return response()->json([
             'invoice' => $invoice
@@ -50,14 +50,7 @@ class InvoiceController extends Controller
     public function showPage(Invoice $invoice)
     {
         $invoice->load(['items', 'customer']);
-
-        // Attach image_urls to items by matching item_name
-        $itemNames = $invoice->items->pluck('item_name')->toArray();
-        $images = Item::whereIn('name', $itemNames)->pluck('image_url', 'name');
-        
-        $invoice->items->each(function ($item) use ($images) {
-            $item->image_url = $images[$item->item_name] ?? null;
-        });
+        $this->attachItemImages($invoice);
 
         return Inertia::render('Invoices/Show', [
             'invoice' => $invoice
@@ -67,8 +60,87 @@ class InvoiceController extends Controller
     /**
      * Export all invoices as an Excel file.
      */
-    public function export()
+    public function export(Request $request)
     {
-        return Excel::download(new InvoicesExport, 'mart2500-invoices-' . date('Y-m-d') . '.xlsx');
+        $filters = $this->getFilters($request);
+
+        return Excel::download(
+            new InvoicesExport($filters['period'], $filters['from'], $filters['to']),
+            'mart2500-invoices-' . date('Y-m-d') . '.xlsx'
+        );
+    }
+
+    protected function getFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'period' => 'nullable|string|in:week,month,year,range',
+            'from' => 'nullable|date_format:Y-m-d',
+            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
+        ]);
+
+        return [
+            'period' => $validated['period'] ?? 'month',
+            'from' => $validated['from'] ?? null,
+            'to' => $validated['to'] ?? null,
+        ];
+    }
+
+    protected function applyDateFilters($query, array $filters): void
+    {
+        $now = now();
+
+        if ($filters['period'] === 'week') {
+            $query->whereBetween('created_at', [
+                $now->copy()->startOfWeek(),
+                $now->copy()->endOfWeek(),
+            ]);
+            return;
+        }
+
+        if ($filters['period'] === 'month') {
+            $query->whereBetween('created_at', [
+                $now->copy()->startOfMonth(),
+                $now->copy()->endOfMonth(),
+            ]);
+            return;
+        }
+
+        if ($filters['period'] === 'year') {
+            $query->whereBetween('created_at', [
+                $now->copy()->startOfYear(),
+                $now->copy()->endOfYear(),
+            ]);
+            return;
+        }
+
+        if (
+            $filters['period'] === 'range' &&
+            $filters['from'] &&
+            $filters['to']
+        ) {
+            $from = Carbon::parse($filters['from'])->startOfDay();
+            $to = Carbon::parse($filters['to'])->endOfDay();
+
+            if ($from->lte($to)) {
+                $query->whereBetween('created_at', [$from, $to]);
+            }
+        }
+    }
+
+    protected function attachItemImages(Invoice $invoice): void
+    {
+        $itemNames = $invoice->items
+            ->pluck('item_name')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $images = Item::whereIn('name', $itemNames)
+            ->get()
+            ->mapWithKeys(fn (Item $item) => [$item->name => $item->image_url]);
+
+        $invoice->items->each(function ($item) use ($images) {
+            $item->image_url = $images->get($item->item_name);
+        });
     }
 }

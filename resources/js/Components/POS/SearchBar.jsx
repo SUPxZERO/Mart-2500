@@ -9,6 +9,7 @@ export default function SearchBar({ value, onChange }) {
             </div>
             
             <input
+                data-page-search="true"
                 type="text"
                 autoFocus
                 className="block w-full pl-10 pr-10 py-3 border border-slate-200 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all shadow-sm"

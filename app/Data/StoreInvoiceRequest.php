@@ -9,7 +9,8 @@ class StoreInvoiceRequest extends Data
 {
     public function __construct(
         public readonly ?int $customer_id,
-        public readonly string $payment_method, // 'Cash', 'ABA', 'KHQR', 'Unpaid_Debt'
+        public readonly string $payment_method,
+        public readonly ?string $payment_provider,
         public readonly int $received_khr,
         
         #[DataCollectionOf(InvoiceItemData::class)]

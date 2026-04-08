@@ -1,12 +1,32 @@
+import { useEffect, useMemo } from 'react';
 import { Printer, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '@/store/useCartStore';
 
 export default function ReceiptModal({ isOpen, onClose, paymentData }) {
     const { cart, selectedCustomer, getCartTotal, clearCart } = useCartStore();
 
+    useEffect(() => {
+        if (!isOpen || !paymentData) {
+            return;
+        }
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isOpen, onClose, paymentData]);
+
     if (!isOpen || !paymentData) return null;
 
-    const total = getCartTotal();
+    // Compute total with useMemo to ensure it updates whenever cart changes
+    const total = useMemo(() => getCartTotal(), [cart]);
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
     const date = new Date().toLocaleString('en-GB');
 
@@ -83,7 +103,9 @@ export default function ReceiptModal({ isOpen, onClose, paymentData }) {
                             <span>{formatMoney(total)}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm font-mono mt-1 text-slate-500">
-                            <span>PAID BY {paymentData.method.replace('_', ' ')}</span>
+                            <span>
+                                PAID BY {(paymentData.provider?.display_name || paymentData.method).replace('_', ' ')}
+                            </span>
                             <span>{formatMoney(paymentData.received_khr)}</span>
                         </div>
                         {paymentData.change_khr > 0 && (

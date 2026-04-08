@@ -5,7 +5,7 @@ import POSLayout from '@/Layouts/POSLayout';
 import { Phone, ArrowLeft, ArrowDownLeft, HandCoins, Receipt, Users, TrendingUp, Calendar, CalendarDays, BarChart2, ShoppingBag } from 'lucide-react';
 import ReceivePaymentModal from '@/Components/Customers/ReceivePaymentModal';
 
-export default function CustomerShow({ customer, timeline, spending }) {
+export default function CustomerShow({ customer, timeline, spending, exchangeRate }) {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
     const fmt = (amount) => new Intl.NumberFormat('en-US').format(amount);
@@ -189,6 +189,7 @@ export default function CustomerShow({ customer, timeline, spending }) {
                 isOpen={isPaymentModalOpen}
                 onClose={() => setIsPaymentModalOpen(false)}
                 customer={customer}
+                exchangeRate={exchangeRate}
             />
         </POSLayout>
     );

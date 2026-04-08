@@ -12,7 +12,7 @@ export default function PageContent({
         width === 'narrow'
             ? 'max-w-3xl'
             : width === 'wide'
-              ? 'max-w-7xl'
+              ? 'w-fullx'
               : 'max-w-none';
 
     return (

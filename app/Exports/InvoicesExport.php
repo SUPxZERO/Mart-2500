@@ -3,17 +3,29 @@
 namespace App\Exports;
 
 use App\Models\InvoiceItem;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class InvoicesExport implements FromQuery, WithMapping, WithHeadings
 {
+    public function __construct(
+        protected ?string $period = null,
+        protected ?string $from = null,
+        protected ?string $to = null,
+    ) {
+    }
+
     public function query()
     {
-        return InvoiceItem::query()->with([
+        $query = InvoiceItem::query()->with([
             'invoice.customer'
-        ])->latest('id');
+        ])->whereHas('invoice', function ($invoiceQuery) {
+            $this->applyDateFilters($invoiceQuery);
+        })->latest('id');
+
+        return $query;
     }
 
     public function headings(): array
@@ -23,6 +35,7 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             'Date',
             'Customer',
             'Payment Method',
+            'Payment Provider',
             'Status',
             'Item Name',
             'Quantity',
@@ -41,6 +54,7 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             $invoice->created_at->format('Y-m-d H:i:s'),
             $invoice->customer ? $invoice->customer->name : 'Walk-in Customer',
             $invoice->payment_method,
+            $invoice->payment_provider,
             $invoice->status,
             $item->item_name,
             $item->qty,
@@ -48,5 +62,43 @@ class InvoicesExport implements FromQuery, WithMapping, WithHeadings
             $item->custom_price_sold_at * $item->qty,
             $invoice->total_khr,
         ];
+    }
+
+    protected function applyDateFilters($query): void
+    {
+        $now = now();
+
+        if ($this->period === 'week') {
+            $query->whereBetween('created_at', [
+                $now->copy()->startOfWeek(),
+                $now->copy()->endOfWeek(),
+            ]);
+            return;
+        }
+
+        if ($this->period === 'month') {
+            $query->whereBetween('created_at', [
+                $now->copy()->startOfMonth(),
+                $now->copy()->endOfMonth(),
+            ]);
+            return;
+        }
+
+        if ($this->period === 'year') {
+            $query->whereBetween('created_at', [
+                $now->copy()->startOfYear(),
+                $now->copy()->endOfYear(),
+            ]);
+            return;
+        }
+
+        if ($this->period === 'range' && $this->from && $this->to) {
+            $from = Carbon::parse($this->from)->startOfDay();
+            $to = Carbon::parse($this->to)->endOfDay();
+
+            if ($from->lte($to)) {
+                $query->whereBetween('created_at', [$from, $to]);
+            }
+        }
     }
 }

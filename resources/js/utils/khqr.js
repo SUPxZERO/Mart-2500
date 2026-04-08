@@ -1,59 +1,185 @@
-/**
- * A basic KHQR EMVCo Payload generator for offline POS.
- * 
- * Note: A true production KHQR string requires:
- * 1. Your specific Bank's Merchant ID / Bakong Account ID.
- * 2. Proper CRC16 CCITT validation checksum appended to the end.
- * 
- * This generator builds a structured mock payload so the scanning 
- * interface works in our demo environment. We pad standard EMVCo tag 
- * lengths automatically.
- */
-export function generateKHQRPayload(amountKhr, merchantName = "Mart 2500") {
-    // Helper to format EMVCo tags (00-99) and lengths (fixed 2 digits)
-    const tl = (tag, value) => {
-        const strVal = String(value);
-        // length must be exactly 2 characters, zero-padded if necessary
-        const len = strVal.length.toString().padStart(2, '0');
-        return `${tag}${len}${strVal}`;
+import { BakongKHQR, IndividualInfo, MerchantInfo, khqrData } from 'bakong-khqr';
+
+const CURRENCY_MAP = {
+    KHR: khqrData.currency.khr,
+    USD: khqrData.currency.usd,
+};
+
+function formatDynamicAmount(amountKhr, currencyMode, exchangeRate) {
+    if (!amountKhr) {
+        return undefined;
+    }
+
+    if (currencyMode === 'USD') {
+        const usdRate = exchangeRate?.usd_to_khr || 4000;
+        return Number((amountKhr / usdRate).toFixed(2));
+    }
+
+    return Math.round(amountKhr);
+}
+
+function normalizeString(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value).trim();
+}
+
+function normalizeKhqrError(error) {
+    const message = error?.message || String(error);
+
+    if (message.includes('slice is not a function')) {
+        return 'KHQR input is not a valid raw QR text string. Paste the full payload text that starts with 000201, not an image, link, or screenshot.';
+    }
+
+    return message;
+}
+
+function buildOptionalData(gateway, amountKhr, exchangeRate) {
+    const optionalData = {
+        currency: CURRENCY_MAP[gateway.currency_mode] || khqrData.currency.khr,
+        accountInformation: normalizeString(gateway.account_information) || undefined,
+        acquiringBank: normalizeString(gateway.acquiring_bank) || undefined,
+        mobileNumber: normalizeString(gateway.phone_number) || undefined,
+        billNumber: normalizeString(gateway.bill_number_prefix) || undefined,
+        storeLabel: normalizeString(gateway.store_label) || undefined,
+        terminalLabel: normalizeString(gateway.terminal_label) || undefined,
+        purposeOfTransaction:
+            normalizeString(gateway.purpose_of_transaction) || undefined,
+        merchantCategoryCode:
+            normalizeString(gateway.merchant_category_code) || '5999',
     };
 
-    let payload = "";
-    
-    // 00: Payload Format Indicator (01)
-    payload += tl("00", "01");
-    
-    // 01: Point of Initiation Method (12 = Dynamic, exact amount)
-    payload += tl("01", "12");
-    
-    // 29-51: Merchant Account Information (Bakong uses specific tags here)
-    // We mock tag 29 globally for KHQR
-    payload += tl("29", 
-        tl("00", "A000000615") + // Application Default (Mock Bakong AID)
-        tl("01", "dev_mart2500@bakong") // Merchant Bakong ID
-    );
+    if (gateway.is_dynamic) {
+        optionalData.amount = formatDynamicAmount(
+            amountKhr,
+            gateway.currency_mode,
+            exchangeRate,
+        );
 
-    // 52: Merchant Category Code (random/placeholder MCC for retail)
-    payload += tl("52", "5411"); 
-    
-    // 53: Transaction Currency (116 = KHR)
-    payload += tl("53", "116");
-    
-    // 54: Transaction Amount
-    payload += tl("54", amountKhr.toString());
-    
-    // 58: Country Code
-    payload += tl("58", "KH");
-    
-    // 59: Merchant Name
-    payload += tl("59", merchantName);
-    
-    // 60: Merchant City
-    payload += tl("60", "Phnom Penh");
+        if (gateway.expiration_minutes) {
+            optionalData.expirationTimestamp =
+                Date.now() + gateway.expiration_minutes * 60 * 1000;
+        }
+    }
 
-    // 63: CRC Data (Placeholder to close it out)
-    // In production, you calculate CRC16 over the *entire payload so far* including the '6304' header!
-    payload += "6304" + "ABCD"; // Pseudo-checksum
+    return optionalData;
+}
 
-    return payload;
+export function inspectKhqrPayload(payload) {
+    const trimmedPayload = normalizeString(payload);
+
+    if (!trimmedPayload) {
+        return {
+            ok: false,
+            errors: ['No KHQR payload found.'],
+        };
+    }
+
+    if (!trimmedPayload.startsWith('000201')) {
+        return {
+            ok: false,
+            errors: [
+                'KHQR payload must be raw text that starts with 000201. Do not paste a QR image, screenshot, or payment link.',
+            ],
+        };
+    }
+
+    return {
+        ok: true,
+        payload: trimmedPayload,
+        decoded: null,
+        source: 'uploaded_payload',
+    };
+}
+
+export function buildGatewayKhqr(gateway, { amountKhr = null, exchangeRate = null } = {}) {
+    if (!gateway?.supports_khqr) {
+        return {
+            ok: false,
+            errors: ['KHQR preview is disabled for this provider.'],
+        };
+    }
+
+    if (gateway.qr_mode === 'uploaded_payload') {
+        return inspectKhqrPayload(gateway.khqr_payload);
+    }
+
+    const merchantName =
+        normalizeString(gateway.account_name) ||
+        normalizeString(gateway.display_name) ||
+        'Merchant';
+    const merchantCity = normalizeString(gateway.merchant_city) || 'Phnom Penh';
+    const bakongAccountId =
+        normalizeString(gateway.bakong_account_id) ||
+        normalizeString(gateway.bakong_id);
+    const optionalData = buildOptionalData(gateway, amountKhr, exchangeRate);
+
+    if (!bakongAccountId) {
+        return {
+            ok: false,
+            errors: ['Bakong Account ID is required for generated KHQR.'],
+        };
+    }
+
+    try {
+        const khqr = new BakongKHQR();
+        let response;
+
+        if (gateway.qr_mode === 'generated_merchant') {
+            const merchantId = normalizeString(gateway.merchant_id);
+            const acquiringBank = normalizeString(gateway.acquiring_bank);
+
+            if (!merchantId || !acquiringBank) {
+                return {
+                    ok: false,
+                    errors: [
+                        'Merchant KHQR requires both Merchant ID and Acquiring Bank.',
+                    ],
+                };
+            }
+
+            const merchantInfo = new MerchantInfo(
+                bakongAccountId,
+                merchantName,
+                merchantCity,
+                merchantId,
+                acquiringBank,
+                optionalData,
+            );
+
+            response = khqr.generateMerchant(merchantInfo);
+        } else {
+            const individualInfo = new IndividualInfo(
+                bakongAccountId,
+                merchantName,
+                merchantCity,
+                optionalData,
+            );
+
+            response = khqr.generateIndividual(individualInfo);
+        }
+
+        if (response?.status?.code !== 0 || !response?.data?.qr) {
+            return {
+                ok: false,
+                errors: [response?.status?.message || 'Failed to generate KHQR.'],
+            };
+        }
+
+        const decoded = BakongKHQR.decode(response.data.qr);
+
+        return {
+            ok: true,
+            payload: response.data.qr,
+            decoded: decoded?.data || null,
+            source: gateway.qr_mode,
+        };
+    } catch (error) {
+        return {
+            ok: false,
+            errors: [normalizeKhqrError(error)],
+        };
+    }
 }

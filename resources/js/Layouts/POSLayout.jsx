@@ -2,6 +2,7 @@ import AppShell from '@/Components/Layout/AppShell';
 import PageContent from '@/Components/Layout/PageContent';
 import PageHeader from '@/Components/Layout/PageHeader';
 import { t } from '@/i18n';
+import { useEffect } from 'react';
 import {
     LayoutDashboard,
     Package,
@@ -26,6 +27,67 @@ export default function POSLayout({
 }) {
     const pathname =
         typeof window !== 'undefined' ? window.location.pathname : '';
+
+    useEffect(() => {
+        const isEditableTarget = (target) => {
+            if (!(target instanceof HTMLElement)) {
+                return false;
+            }
+
+            return (
+                target.isContentEditable ||
+                ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+            );
+        };
+
+        const getSearchTarget = () => {
+            const candidates = Array.from(
+                document.querySelectorAll('[data-page-search="true"]'),
+            );
+
+            return candidates
+                .reverse()
+                .find((element) => {
+                    if (!(element instanceof HTMLElement)) {
+                        return false;
+                    }
+
+                    return (
+                        !element.hasAttribute('disabled') &&
+                        element.offsetParent !== null
+                    );
+                });
+        };
+
+        const handleKeydown = (event) => {
+            if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'f') {
+                return;
+            }
+
+            if (isEditableTarget(event.target)) {
+                return;
+            }
+
+            const searchTarget = getSearchTarget();
+
+            if (!searchTarget) {
+                return;
+            }
+
+            event.preventDefault();
+            searchTarget.focus();
+
+            if ('select' in searchTarget && typeof searchTarget.select === 'function') {
+                searchTarget.select();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeydown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeydown);
+        };
+    }, []);
 
     const navigation = [
         {

@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { t } from '@/i18n';
-import { X, Printer, CheckCircle2, ExternalLink } from 'lucide-react';
+import { X, Printer, CheckCircle2, ExternalLink, Download } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import { exportInvoicePdf } from '@/utils/exportInvoicePdf';
 
 export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
     const [invoice, setInvoice] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+    const receiptRef = useRef(null);
 
     useEffect(() => {
         if (isOpen && invoiceId) {
@@ -26,6 +29,24 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
         }
     }, [isOpen, invoiceId]);
 
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
@@ -36,9 +57,24 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
             hour: '2-digit', minute: '2-digit'
         });
     };
+    const paymentLabel = (invoice?.payment_provider || invoice?.payment_method || '').replace('_', ' ');
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!receiptRef.current || !invoice || isDownloadingPdf) {
+            return;
+        }
+
+        setIsDownloadingPdf(true);
+
+        try {
+            await exportInvoicePdf(receiptRef.current, `${invoice.invoice_number}.pdf`);
+        } finally {
+            setIsDownloadingPdf(false);
+        }
     };
 
     return (
@@ -60,7 +96,7 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
                     </div>
                 ) : invoice ? (
-                    <div id="receipt-paper" className="bg-white text-slate-800 w-full p-8 shadow-2xl rounded-sm relative overflow-y-auto animate-in fade-in zoom-in-95 duration-200 print:shadow-none print:p-0">
+                    <div ref={receiptRef} id="receipt-paper" className="bg-white text-slate-800 w-full p-8 shadow-2xl rounded-sm relative overflow-y-auto animate-in fade-in zoom-in-95 duration-200 print:shadow-none print:p-0">
                         {/* Zig-zag top border simulation */}
                         <div className="absolute top-0 left-0 w-full h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSI4Ij48cGF0aCBkPSJNMCA4IEwxMCAwIEwyMCA4IFoiIGZpbGw9IiNmMThmMjYiLz48L3N2Zz4=')] opacity-10"></div>
                         
@@ -127,7 +163,7 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
                                 <span>{formatMoney(invoice.total_khr)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm font-mono mt-1 text-slate-500 uppercase">
-                                <span>{t('invoices.paid_by', { method: invoice.payment_method?.replace('_', ' ') })}</span>
+                                <span>{t('invoices.paid_by', { method: paymentLabel })}</span>
                                 <span>{formatMoney(invoice.total_khr)}</span>
                             </div>
                             
@@ -144,6 +180,15 @@ export default function InvoiceDetailModal({ isOpen, onClose, invoiceId }) {
                 {/* Actions (Not rendered in print) */}
                 {invoice && !isLoading && (
                     <div className="mt-4 w-full print:hidden flex flex-col gap-2">
+                        <button
+                            type="button"
+                            onClick={handleDownloadPdf}
+                            disabled={isDownloadingPdf}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <Download className="w-5 h-5" />
+                            {isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}
+                        </button>
                         <Link 
                             href={`/invoices/${invoice.id}/show`}
                             className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl shadow-sm transition-colors border border-indigo-200"

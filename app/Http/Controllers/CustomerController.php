@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\ExchangeRate;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +63,7 @@ class CustomerController extends Controller
                     'type' => 'payment',
                     'date' => $pay->created_at,
                     'amount' => $pay->amount_paid_khr,
-                    'method' => $pay->payment_method
+                    'method' => $pay->payment_provider ?: $pay->payment_method
                 ];
             });
 
@@ -109,6 +110,7 @@ class CustomerController extends Controller
             'customer' => $customer,
             'timeline' => $timeline,
             'spending' => $spending,
+            'exchangeRate' => ExchangeRate::first(),
         ]);
     }
 

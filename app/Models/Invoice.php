@@ -11,6 +11,7 @@ class Invoice extends Model
         'customer_id',
         'total_khr',
         'payment_method',
+        'payment_provider',
         'status',
     ];
 

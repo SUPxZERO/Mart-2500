@@ -10,6 +10,7 @@ class Payment extends Model
         'customer_id',
         'amount_paid_khr',
         'payment_method',
+        'payment_provider',
     ];
 
     protected $casts = [

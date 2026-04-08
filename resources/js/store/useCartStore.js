@@ -1,35 +1,37 @@
 import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 
-export const useCartStore = create((set, get) => ({
-    cart: [],
-    selectedCustomer: null,
+export const useCartStore = create(
+    subscribeWithSelector((set, get) => ({
+        cart: [],
+        selectedCustomer: null,
 
-    // Actions
-    addItem: (item) => {
-        set((state) => {
-            const existingItemIndex = state.cart.findIndex(i => i.id === item.id);
-            
-            if (existingItemIndex > -1) {
-                // Item exists, increase quantity
-                const newCart = [...state.cart];
-                newCart[existingItemIndex].qty += 1;
-                return { cart: newCart };
-            }
-            
-            // New item, add to cart with qty = 1 and default price (always integer KHR)
-            return {
-                cart: [
-                    ...state.cart,
-                    {
-                        ...item,
-                        qty: 1,
-                        // Guard: ensure price is always a safe integer (no floats)
-                        custom_price_sold_at: Math.round(item.default_price)
-                    }
-                ]
-            };
-        });
-    },
+        // Actions
+        addItem: (item) => {
+            set((state) => {
+                const existingItemIndex = state.cart.findIndex(i => i.id === item.id);
+                
+                if (existingItemIndex > -1) {
+                    // Item exists, increase quantity
+                    const newCart = [...state.cart];
+                    newCart[existingItemIndex].qty += 1;
+                    return { cart: newCart };
+                }
+                
+                // New item, add to cart with qty = 1 and default price (always integer KHR)
+                return {
+                    cart: [
+                        ...state.cart,
+                        {
+                            ...item,
+                            qty: 1,
+                            // Guard: ensure price is always a safe integer (no floats)
+                            custom_price_sold_at: Math.round(item.default_price)
+                        }
+                    ]
+                };
+            });
+        },
 
     removeItem: (index) => {
         set((state) => ({
@@ -84,4 +86,5 @@ export const useCartStore = create((set, get) => ({
         const state = get();
         return state.cart.reduce((total, item) => total + (item.custom_price_sold_at * item.qty), 0);
     }
-}));
+    }))
+);

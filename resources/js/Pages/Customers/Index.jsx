@@ -26,6 +26,7 @@ export default function CustomersIndex({ customers, filters }) {
                         <Search className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
+                        data-page-search="true"
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t } from '@/i18n';
 import { Search, X, User } from 'lucide-react';
 import { useCartStore } from '@/store/useCartStore';
@@ -6,6 +6,24 @@ import { useCartStore } from '@/store/useCartStore';
 export default function CustomerModal({ isOpen, onClose, customers }) {
     const [searchQuery, setSearchQuery] = useState('');
     const setSelectedCustomer = useCartStore((state) => state.setSelectedCustomer);
+
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const handleEscape = (event) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
@@ -44,6 +62,7 @@ export default function CustomerModal({ isOpen, onClose, customers }) {
                             <Search className="h-5 w-5 text-slate-400" />
                         </div>
                         <input
+                            data-page-search="true"
                             type="text"
                             autoFocus
                             className="block w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm"

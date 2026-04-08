@@ -1,9 +1,13 @@
 import { Head, Link } from '@inertiajs/react';
+import { useRef, useState } from 'react';
 import { t } from '@/i18n';
 import { Printer, ArrowLeft, Download } from 'lucide-react';
 import POSLayout from '@/Layouts/POSLayout';
+import { exportInvoicePdf } from '@/utils/exportInvoicePdf';
 
 export default function InvoiceShow({ invoice }) {
+    const invoiceRef = useRef(null);
+    const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
     const formatMoney = (amount) => new Intl.NumberFormat('en-US').format(amount);
     
     const formatDate = (dateString) => {
@@ -12,9 +16,27 @@ export default function InvoiceShow({ invoice }) {
             hour: '2-digit', minute: '2-digit'
         });
     };
+    const paymentLabel = (invoice.payment_provider || invoice.payment_method || '').replace('_', ' ');
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!invoiceRef.current || isDownloadingPdf) {
+            return;
+        }
+
+        setIsDownloadingPdf(true);
+
+        try {
+            await exportInvoicePdf(
+                invoiceRef.current,
+                `${invoice.invoice_number}.pdf`,
+            );
+        } finally {
+            setIsDownloadingPdf(false);
+        }
     };
 
     return (
@@ -36,13 +58,15 @@ export default function InvoiceShow({ invoice }) {
                 </Link>
                 
                 <div className="flex flex-wrap gap-3">
-                    <a
-                        href="/invoices/export"
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                    <button
+                        type="button"
+                        onClick={handleDownloadPdf}
+                        disabled={isDownloadingPdf}
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 font-bold text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         <Download className="h-5 w-5" />
-                        Export All Excel
-                    </a>
+                        {isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}
+                    </button>
                     <button
                         onClick={handlePrint}
                         className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 font-bold text-white shadow-md transition-colors hover:bg-indigo-700"
@@ -54,7 +78,7 @@ export default function InvoiceShow({ invoice }) {
             </div>
 
             {/* A4 Document Area */}
-            <div className="mx-auto max-w-4xl bg-white shadow-xl rounded-sm print:shadow-none print:w-full print:max-w-none print:p-0">
+            <div ref={invoiceRef} className="mx-auto max-w-4xl bg-white shadow-xl rounded-sm print:shadow-none print:w-full print:max-w-none print:p-0">
                 <div className="p-10 sm:p-16">
                     
                     {/* Invoice Header */}
@@ -133,7 +157,7 @@ export default function InvoiceShow({ invoice }) {
                     <div className="flex flex-col sm:flex-row justify-between items-end gap-8 border-t border-slate-200 pt-8">
                         <div className="w-full sm:w-1/2">
                             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Payment Method</p>
-                            <p className="text-slate-800 font-medium">{invoice.payment_method?.replace('_', ' ')}</p>
+                            <p className="text-slate-800 font-medium">{paymentLabel}</p>
                         </div>
                         
                         <div className="w-full sm:w-80 space-y-3">

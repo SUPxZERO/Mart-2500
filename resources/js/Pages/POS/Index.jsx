@@ -7,7 +7,7 @@ import Cart from '@/Components/POS/Cart';
 import { t } from '@/i18n';
 import { useCartStore } from '@/store/useCartStore';
 
-export default function POSIndex({ items, customers, exchange_rate }) {
+export default function POSIndex({ items, customers, exchange_rate, payment_gateways }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const { addItem, cart } = useCartStore();
@@ -44,10 +44,10 @@ export default function POSIndex({ items, customers, exchange_rate }) {
         >
             <Head title={t('pos.page_title')} />
             
-            <div className="flex h-full min-h-[calc(100vh-13rem)] flex-col overflow-hidden lg:flex-row">
+            <div className="flex min-h-[calc(100vh-13rem)] flex-col overflow-hidden lg:h-[calc(100vh-13rem)] lg:min-h-0 lg:flex-row">
                 
                 {/* Left Side: Item Catalog Wrapper */}
-                <div className="relative flex flex-1 flex-col border-b border-slate-200 bg-slate-50 lg:h-full lg:border-b-0 lg:border-r">
+                <div className="relative flex min-h-0 flex-1 flex-col border-b border-slate-200 bg-slate-50 lg:h-full lg:border-b-0 lg:border-r">
                     
                     {/* Search Bar Header */}
                     <header className="z-10 flex items-center border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
@@ -95,8 +95,8 @@ export default function POSIndex({ items, customers, exchange_rate }) {
                 </div>
 
                 {/* Right Side: Active Cart Drawer/Pane */}
-                <div className="z-20 flex w-full shrink-0 flex-col border-l border-slate-200 bg-white shadow-xl lg:h-full lg:w-[26rem] lg:shadow-none">
-                    <Cart customers={customers} />
+                <div className="z-20 flex min-h-0 w-full shrink-0 flex-col border-l border-slate-200 bg-white shadow-xl lg:h-full lg:w-[26rem] lg:shadow-none">
+                    <Cart customers={customers} exchangeRate={exchange_rate} paymentGateways={payment_gateways} />
                 </div>
 
             </div>

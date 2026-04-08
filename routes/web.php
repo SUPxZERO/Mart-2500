@@ -18,10 +18,13 @@ Route::get('/api/categories', [\App\Http\Controllers\CategoryController::class, 
 Route::post('/api/categories', [\App\Http\Controllers\CategoryController::class, 'store']);
 
 Route::get('/pos', function () {
+    \App\Models\PaymentGateway::ensureDefaults();
+
     return Inertia::render('POS/Index', [
         'items'         => \App\Models\Item::active()->orderBy('category')->orderBy('name')->get(),
         'customers'     => \App\Models\Customer::orderBy('name')->get(),
         'exchange_rate' => \App\Models\ExchangeRate::first(),
+        'payment_gateways' => \App\Models\PaymentGateway::where('enabled', true)->orderBy('sort_order')->get(),
     ]);
 })->name('pos');
 
@@ -42,6 +45,7 @@ Route::post('/customers/{customer}/payment', [\App\Http\Controllers\CustomerCont
 // Settings
 Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings');
 Route::post('/settings/rate', [\App\Http\Controllers\SettingsController::class, 'updateRate']);
+Route::post('/settings/payment-methods', [\App\Http\Controllers\SettingsController::class, 'updatePaymentMethods']);
 Route::get('/settings/backup', [\App\Http\Controllers\SettingsController::class, 'downloadBackup']);
 
 // Backend transaction layer
