@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+    --app-bg: #f3f6f4;
+    --app-sidebar: #0f172a;
+    --app-border: #dbe4dd;
+}
+
+body {
+    background: radial-gradient(circle at top, #ffffff 0%, #f3f6f4 48%, #edf2ee 100%);
+    color: #0f172a;
+}
+
+/* ── Print styles: only show the receipt paper div ────────────────── */
+@media print {
+    /* Hide everything */
+    body > * {
+        display: none !important;
+    }
+
+    /* Show only the receipt paper */
+    #receipt-paper {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        padding: 24px;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 13px;
+        color: #000;
+        background: #fff;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    /* Ensure buttons and badges don't print */
+    .print\:hidden {
+        display: none !important;
+    }
+}
