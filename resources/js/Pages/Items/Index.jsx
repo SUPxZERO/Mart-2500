@@ -102,7 +102,7 @@ export default function ItemsIndex({ items, filters }) {
                                                     {item.image_url && !imageErrors[item.id] ? (
                                                         <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover border border-slate-100 shrink-0" onError={() => handleImageError(item.id)} />
                                                     ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0 text-lg">
+                                                        <div className="w-10 h-10 rounded-lg bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center shrink-0 text-lg">
                                                             📦
                                                         </div>
                                                     )}

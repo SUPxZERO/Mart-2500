@@ -98,7 +98,7 @@ export default function PaymentModal({
     const khqrPreview = useMemo(
         () =>
             selectedGateway
-                ? buildGatewayKhqr(selectedGateway, {
+                ? buildGatewayKhqr({ ...selectedGateway, is_dynamic: true }, {
                       amountKhr: total,
                       exchangeRate,
                   })
@@ -405,7 +405,7 @@ export default function PaymentModal({
                                                     )}
                                                 </div>
 
-                                                <div className="flex min-h-[24rem] flex-1 items-center justify-center rounded-2xl border border-slate-100 p-6 shadow-sm">
+                                                <div className="flex min-h-96 flex-1 items-center justify-center rounded-2xl border border-slate-100 p-6 shadow-sm">
                                                     <QRCodeSVG
                                                         value={khqrPayload}
                                                         size={320}

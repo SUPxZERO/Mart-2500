@@ -32,12 +32,12 @@ export default function ItemCard({ item, qtyInCart = 0, onClick }) {
                         onError={() => setImageError(true)}
                     />
                 ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center">
+                    <div className="w-full h-full bg-linear-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center">
                         <span className="text-4xl select-none opacity-30">📦</span>
                     </div>
                 )}
                 {/* Gradient overlay for readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
             </div>
 
 

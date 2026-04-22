@@ -181,7 +181,7 @@ export default function POSIndex({ items, customers, exchange_rate, payment_gate
                 </div>
 
                 {/* Right Side: Active Cart Drawer/Pane */}
-                <div className="z-20 flex min-h-0 w-full shrink-0 flex-col border-l border-slate-200 bg-white shadow-xl lg:h-full lg:w-[26rem] lg:shadow-none">
+                <div className="z-20 flex min-h-0 w-full shrink-0 flex-col border-l border-slate-200 bg-white shadow-xl lg:h-full lg:w-26rem lg:shadow-none">
                     <Cart customers={customers} exchangeRate={exchange_rate} paymentGateways={payment_gateways} />
                 </div>
 

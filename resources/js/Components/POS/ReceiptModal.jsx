@@ -51,7 +51,7 @@ export default function ReceiptModal({ isOpen, onClose, paymentData }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
             <div className="flex flex-col items-center max-h-[95vh] w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
                 
                 {/* Success Indicator */}

@@ -7,16 +7,7 @@ use Inertia\Inertia;
 
 Route::redirect('/', '/pos');
 
-// Item Management (CRUD)
-Route::resource('items', \App\Http\Controllers\ItemController::class)
-    ->except(['show']);
-Route::patch('/items/{item}/restore', [\App\Http\Controllers\ItemController::class, 'restore'])->name('items.restore');
-
-// Category Management
-Route::resource('categories', \App\Http\Controllers\CategoryController::class)->except(['create', 'show', 'edit']);
-Route::get('/api/categories', [\App\Http\Controllers\CategoryController::class, 'apiIndex']);
-Route::post('/api/categories', [\App\Http\Controllers\CategoryController::class, 'store']);
-
+// POS Page - Public, no authentication required
 Route::get('/pos', function () {
     \App\Models\PaymentGateway::ensureDefaults();
 
@@ -27,6 +18,14 @@ Route::get('/pos', function () {
         'payment_gateways' => \App\Models\PaymentGateway::where('enabled', true)->orderBy('sort_order')->get(),
     ]);
 })->name('pos');
+
+// Public API endpoints for POS
+Route::post('/api/invoices', [\App\Http\Controllers\Api\InvoiceController::class, 'store']);
+
+// Image serving route - public
+Route::get('/item-image/{path}', [\App\Http\Controllers\ImageController::class, 'serve'])
+    ->where('path', '.*')
+    ->name('image.serve');
 
 // Dashboard
 Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
@@ -47,13 +46,5 @@ Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index
 Route::post('/settings/rate', [\App\Http\Controllers\SettingsController::class, 'updateRate']);
 Route::post('/settings/payment-methods', [\App\Http\Controllers\SettingsController::class, 'updatePaymentMethods']);
 Route::get('/settings/backup', [\App\Http\Controllers\SettingsController::class, 'downloadBackup']);
-
-// Image serving route
-Route::get('/item-image/{path}', [\App\Http\Controllers\ImageController::class, 'serve'])
-    ->where('path', '.*')
-    ->name('image.serve');
-
-// Backend transaction layer
-Route::post('/api/invoices', [\App\Http\Controllers\Api\InvoiceController::class, 'store']);
 
 require __DIR__.'/auth.php';

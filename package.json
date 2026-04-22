@@ -1,10 +1,23 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "mart2500-pos",
+    "version": "1.0.0",
+    "description": "Desktop POS System for MART2500",
+    "author": "MART2500",
+    "license": "MIT",
     "private": true,
     "type": "module",
+    "main": "electron/main.js",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "dev": "concurrently \"npm run dev:web\" \"npm run dev:electron\" \"npm run dev:watch\"",
+        "dev:web": "vite",
+        "dev:electron": "electron .",
+        "dev:watch": "vite build --watch --emptyOutDir false",
+        "build": "vite build && npm run build:electron",
+        "build:electron": "electron-builder --config electron-builder.config.cjs",
+        "build:electron:win": "vite build && electron-builder --config electron-builder.config.cjs --win --publish never",
+        "build:electron:win:portable": "vite build && electron-builder --config electron-builder.config.cjs --win portable --publish never",
+        "build:electron:all": "vite build && electron-builder --config electron-builder.config.cjs -mwl"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
@@ -12,23 +25,26 @@
         "@tailwindcss/forms": "^0.5.3",
         "@tailwindcss/vite": "^4.2.2",
         "@vitejs/plugin-react": "^6.0.1",
-        "axios": ">=1.11.0 <=1.14.0",
-        "concurrently": "^9.0.1",
-        "laravel-vite-plugin": "^3.0.0",
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0",
-        "tailwindcss": "^4.2.2",
-        "vite": "^8.0.0"
-    },
-    "dependencies": {
         "bakong-khqr": "^1.0.20",
+        "concurrently": "^9.0.1",
         "date-fns": "^4.1.0",
+        "electron": "^31.0.0",
+        "electron-builder": "^25.1.0",
         "html2canvas": "^1.4.1",
         "jspdf": "^4.2.1",
+        "laravel-vite-plugin": "^3.0.0",
         "lucide-react": "^1.7.0",
         "qrcode.react": "^4.2.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
         "react-is": "^19.2.4",
         "recharts": "^3.8.1",
+        "tailwindcss": "^4.2.2",
+        "vite": "^8.0.0",
         "zustand": "^5.0.12"
+    },
+    "dependencies": {
+        "axios": ">=1.11.0 <=1.14.0",
+        "fs-extra": "^11.1.0"
     }
 }

@@ -94,7 +94,7 @@ export default function Dashboard({ stats, revenueTrend, topItems, paymentBreakd
                                     </LineChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-[300px] flex items-center justify-center text-gray-400">No sales data yet</div>
+                                <div className="h-75 flex items-center justify-center text-gray-400">No sales data yet</div>
                             )}
                         </div>
 
@@ -120,7 +120,7 @@ export default function Dashboard({ stats, revenueTrend, topItems, paymentBreakd
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-[300px] flex items-center justify-center text-gray-400">No data yet</div>
+                                <div className="h-75 flex items-center justify-center text-gray-400">No data yet</div>
                             )}
                             {paymentBreakdown && paymentBreakdown.length > 0 && (
                                 <div className="mt-4 space-y-2">
